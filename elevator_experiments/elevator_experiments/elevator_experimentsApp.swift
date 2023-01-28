@@ -9,12 +9,9 @@ import SwiftUI
 
 @main
 struct elevator_experimentsApp: App {
-    let persistenceController = PersistenceController.shared
-
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(\.managedObjectContext, persistenceController.container.viewContext)
         }
     }
 }
