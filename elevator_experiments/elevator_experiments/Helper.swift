@@ -20,7 +20,7 @@ func addData(data: String) {
 
     var logFile: URL? {
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
-        let fileName = "symptom_data.csv"
+        let fileName = "data.csv"
         return documentsDirectory.appendingPathComponent(fileName)
     }
     
@@ -37,7 +37,7 @@ func addData(data: String) {
             fileHandle.closeFile()
         }
     } else {
-        var csvText = "Symptom,Severity,Comment,Time\n"
+        var csvText = "Date,Hour,Elevator\n"
 
 
              let newLine = "\(month)/\(day)/\(year),\(hour),\(data)\n"
