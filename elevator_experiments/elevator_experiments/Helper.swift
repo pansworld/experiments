@@ -12,7 +12,7 @@ class Helpers {
 
 }
 
-func addData(data: String) {
+func addData(input: String) {
     let hour = Calendar.current.component(.hour, from: Date())
     let day = Calendar.current.component(.day, from: Date())
     let month = Calendar.current.component(.month, from: Date())
@@ -20,6 +20,7 @@ func addData(data: String) {
 
     var logFile: URL? {
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
+        //print(documentsDirectory)
         let fileName = "data.csv"
         return documentsDirectory.appendingPathComponent(fileName)
     }
@@ -28,7 +29,7 @@ func addData(data: String) {
         return
     }
 
-    guard let data = ("\(month)/\(day)/\(year),\(hour),\(data)\n").data(using: String.Encoding.utf8) else { return }
+    guard let data = ("\(month)/\(day)/\(year),\(hour),\(input)\n").data(using: String.Encoding.utf8) else { return }
 
     if FileManager.default.fileExists(atPath: logFile.path) {
         if let fileHandle = try? FileHandle(forWritingTo: logFile) {
@@ -40,7 +41,7 @@ func addData(data: String) {
         var csvText = "Date,Hour,Elevator\n"
 
 
-             let newLine = "\(month)/\(day)/\(year),\(hour),\(data)\n"
+             let newLine = "\(month)/\(day)/\(year),\(hour),\(input)\n"
              csvText.append(newLine)
 
 
