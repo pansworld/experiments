@@ -7,21 +7,40 @@
 
 import SwiftUI
 
-let helper = Helpers()
-
 struct Buttons: View {
+    @State var el1Prob :String = "0.00"
+    @State var el2Prob :String = "0.00"
+    @State var el3Prob :String = "0.00"
+
+
     var body: some View {
         VStack{
-            Button("Elevator 1") {
-                helper.addToCSV("1")
+            HStack{
+                Button("Elevator 1") {
+                    helper.addData(input: "1")
+                }.padding()
+                Text(self.el1Prob)
+            }
+            HStack{
+                Button("Elevator 2") {
+                    helper.addData(input: "2")
+                }.padding()
+                Text(self.el2Prob)
+            }
+            HStack{
+                Button("Elevator 3") {
+                    helper.addData(input: "3")
+                }.padding()
+                Text(self.el2Prob)
+            }
+            Spacer()
+            HStack{
+                MyCustomLogin(value1: self.$el1Prob, value2: self.$el2Prob, value3: self.$el3Prob)
             }.padding()
-            Button("Elevator 2") {
-                helper.addToCSV("2")
-            }.padding()
-            Button("Elevator 3") {
-                helper.addToCSV("3")
-            }.padding()
+
+
         }.padding()
+            
     }
 }
 
@@ -30,3 +49,4 @@ struct Buttons_Previews: PreviewProvider {
         Buttons()
     }
 }
+
