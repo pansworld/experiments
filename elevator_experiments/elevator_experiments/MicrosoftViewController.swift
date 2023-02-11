@@ -23,15 +23,24 @@ class MicrosoftViewController:UIViewController{
     }
     
     var accessToken: String = ""
-    @Binding var el1Prob: String
-    @Binding var el2Prob: String
-    @Binding var el3Prob: String
+    private var application :Any
+    private var accountIdentifier :String = ""
+    @Binding var elProb: [String]
 
-    init(value1: Binding<String>, value2: Binding<String>, value3: Binding<String>){
-        self._el1Prob = value1
-        self._el2Prob = value2
-        self._el3Prob = value3
-        super.init(nibName: nil, bundle: nil)
+    init(value: Binding<[String]>) {
+        do {
+            self._elProb = value
+            let authority = try MSALAuthority(url: URL(string: helper.msalConfig.authorityURL)!)
+            
+            let pcaConfig = MSALPublicClientApplicationConfig(clientId: helper.msalConfig.clientId, redirectUri: helper.msalConfig.redirectURI, authority: authority)
+            application = try MSALPublicClientApplication(configuration: pcaConfig)
+            super.init(nibName: nil, bundle: nil)
+        }catch let error as NSError{
+            application = ""
+            super.init(nibName: nil, bundle: nil)
+            print(error.localizedDescription)
+        }
+
     }
     
     required init?(coder: NSCoder) {
@@ -51,26 +60,49 @@ class MicrosoftViewController:UIViewController{
     }
     
     @objc func buttonTapped(_ sender: UIButton) {
-        do {
-            let doWeHaveAToken = false
-            if (doWeHaveAToken){
-                
+        /*do {*/
+            var isSignIn = false
+            if (sender.currentTitle == "Sign In"){
+                isSignIn = true
+
+            }else{
+                isSignIn = false
+            }
+            
+            if (!isSignIn){
+                print("Sign out")
+                Task {
+                    let webViewParameters = MSALWebviewParameters(authPresentationViewController: self)
+                    let signoutParameters = MSALSignoutParameters(webviewParameters: webViewParameters)
+                    signoutParameters.signoutFromBrowser = false
+
+                    
+                    let account = try (self.application as! MSALPublicClientApplication).account(forIdentifier: self.accountIdentifier )
+                    print(account)
+                    try await (self.application as!
+                         MSALPublicClientApplication).signout(with: account, signoutParameters: signoutParameters)
+                    
+                    sender.setTitle("Sign In", for: .normal)
+                    sender.backgroundColor = .blue
+                    
+                    self.elProb[0]="0.00"
+                    self.elProb[1]="0.00"
+                    self.elProb[2]="0.00"
+                    
+                }
+
             }else{
                 
-                let authority = try MSALAuthority(url: URL(string: "https://login.microsoftonline.com/common")!)
-
-                let pcaConfig = MSALPublicClientApplicationConfig(clientId: "3de9c462-dfd5-4082-a1af-b0e62822b8ab", redirectUri: "msauth.pansworld.elevator-experiments://auth", authority: authority)
-                let application = try MSALPublicClientApplication(configuration: pcaConfig)
                 let webViewParameters = MSALWebviewParameters(authPresentationViewController: self)
                 let interactiveParameters = MSALInteractiveTokenParameters(scopes: ["user.read","Files.ReadWrite.All"], webviewParameters: webViewParameters)
                 interactiveParameters.promptType = .selectAccount
-                application.acquireToken(with: interactiveParameters){ (result, error) in
+                (self.application as! MSALPublicClientApplication).acquireToken(with: interactiveParameters){ (result, error) in
                     guard let result = result else {
                         print(error!)
                         return
                     }
-                    
                     helper.accessToken = result.accessToken
+                    print(result.tenantProfile.claims!["name"]!)
     //Start
                     
                     
@@ -248,31 +280,22 @@ class MicrosoftViewController:UIViewController{
 
                     Task {
                         await helper.getLastExcelTableRow(excelFile: "elevator_experiments.xlsx", tableName: "Table1")
-                        print("Helper=\(helper.tableRow)")
-                        print(helper.tableRow[0])
+                        //print("Helper=\(helper.tableRow)")
+                        //print(helper.tableRow[0])
                         helper.el1Prob = String(format: "%.2f", helper.tableRow[0][13] as! Double)
                         helper.el2Prob = String(format: "%.2f", helper.tableRow[0][14] as! Double)
                         helper.el3Prob = String(format: "%.2f", helper.tableRow[0][15] as! Double)
-                        self.el1Prob=helper.el1Prob
-                        self.el2Prob=helper.el2Prob
-                        self.el3Prob=helper.el3Prob
+                        self.elProb[0]=helper.el1Prob
+                        self.elProb[1]=helper.el2Prob
+                        self.elProb[2]=helper.el3Prob
                     }
-
-                
                 }
-            
-            
-            
-            
-
-                
-
             }
-        }catch{
+        /*}catch{
             self.accessToken = ""
-            print(error)
+            print(error.localizedDescription)
             return
-        }
+        }*/
         
 
     }
@@ -280,14 +303,10 @@ class MicrosoftViewController:UIViewController{
 
 struct MyCustomLogin: UIViewControllerRepresentable{
     
-    @Binding var el1Prob: String
-    @Binding var el2Prob: String
-    @Binding var el3Prob: String
+    @Binding var elProb: [String]
 
-    init(value1: Binding<String>, value2: Binding<String>, value3: Binding<String>){
-        self._el1Prob = value1
-        self._el2Prob = value2
-        self._el3Prob = value3
+    init(value: Binding<[String]>){
+        self._elProb = value
     }
     
     func updateUIViewController(_ uiViewController: MicrosoftViewController, context: Context) {
@@ -296,6 +315,6 @@ struct MyCustomLogin: UIViewControllerRepresentable{
     typealias UIViewControllerType = MicrosoftViewController
     
     func makeUIViewController(context: UIViewControllerRepresentableContext<MyCustomLogin>) -> MicrosoftViewController {
-        return MicrosoftViewController(value1: self._el1Prob, value2: self._el2Prob, value3: self._el3Prob)
+            return MicrosoftViewController(value: self._elProb)
     }
 }

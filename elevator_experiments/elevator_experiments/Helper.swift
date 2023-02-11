@@ -25,6 +25,7 @@ struct MSALConfig {
     var clientId = "3de9c462-dfd5-4082-a1af-b0e62822b8ab"
     var redirectURI = "msauth.pansworld.elevator-experiments://auth"
     var baseURL = "https://graph.microsoft.com/v1.0/me/drive/root:/"
+    var authorityURL = "https://login.microsoftonline.com/common"
 }
 
 
@@ -35,11 +36,13 @@ class Helpers {
     var accountId: String
     var accountName: String
     let msalConfig = MSALConfig()
+    let getDaysSince1900 = getDaysSince190
     var excelId: String
     var tableRow: [[Any]]
     var el1Prob: String
     var el2Prob: String
     var el3Prob: String
+    var lastIndex: Int
     
     init(){
         //Constructor
@@ -52,6 +55,7 @@ class Helpers {
         self.el1Prob = ""
         self.el2Prob = ""
         self.el3Prob = ""
+        self.lastIndex = 0
 
     }
     
@@ -98,10 +102,26 @@ class Helpers {
              print(logFile)
         }
     }
+    
+    /**
+         Get the number of dats since 1900
+         Return the number of days as integer
+     **/
+    func getDaysSince190(inDate: Date) -> Int {
+        let startDateString = "01/01/1900"
+        
+        // Create Date Formatter
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "M/d/yyyy"
+        
+        let days = Calendar.current.dateComponents([.day], from: dateFormatter.date(from: startDateString)!, to: inDate).day!
+        
+        return days
+    }
 
     
     /**
-            Check if we have an access token
+        Check if we have an access token
      **/
     func isLoggedIn() -> Bool {
         if (self.accessToken == ""){
@@ -125,7 +145,7 @@ class Helpers {
             let interactiveParameters = MSALInteractiveTokenParameters(scopes: ["user.read","Files.ReadWrite.All"], webviewParameters: webViewParameters)
             interactiveParameters.promptType = .selectAccount
                 application.acquireToken(with: interactiveParameters){ (result, error) in
-                print("RESULT = \(String(describing: result))")
+                //print("RESULT = \(String(describing: result))")
  
                 guard let result = result else {
                     print("ERROR=\(String(describing: error))")
@@ -145,8 +165,6 @@ class Helpers {
         Asynchronous function
     **/
     func getLastExcelTableRow(excelFile: String, tableName: String) async {
-        
-        
         do {
             var graphURI = msalConfig.baseURL + excelFile + ":/workbook/worksheets" //"https://graph.microsoft.com/v1.0/me/drive/root:/elevator_experiments.xlsx:/workbook/worksheets"
             var url = URL(string: graphURI)
@@ -169,18 +187,20 @@ class Helpers {
             }
             
 
-            if (self.excelId != nil){
+            if (self.excelId != ""){
                 graphURI = msalConfig.baseURL + excelFile + ":/workbook/worksheets(%27%7B" + String(describing: self.excelId) + "%7D%27)/tables/" + tableName + "/rows"
                  url = URL(string: graphURI)
                  request = URLRequest(url: url!)
                 // Set the Authorization header for the request. We use Bearer tokens, so we specify Bearer + the token we got from the result
                 request.setValue("Bearer \(self.accessToken)", forHTTPHeaderField: "Authorization")
                 let (data, _) = try await URLSession.shared.data(for: request)
-                var result = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
+                let result = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
                 
-                var json = result!["value"] as? [[String: Any]]
+                let json = result!["value"] as? [[String: Any]]
                 self.retVal = String(describing: json?[0]["id"])
                 self.tableRow = ((json?[json!.count - 1]["values"])  as! [[Any]])
+                self.lastIndex = json!.count - 1
+                
             }
 
         }catch{
@@ -190,23 +210,127 @@ class Helpers {
     }
     
     /**
+        Process the row
+        Update or add based on the days method
+     **/
+    func processTableRow(excelFile: String, tableName: String, elevatorNo: Int) async {
+        
+        //print(self.accessToken)
+        //Get the last row
+        await self.getLastExcelTableRow(excelFile: excelFile, tableName: tableName)
+        
+        let lastRow = self.tableRow
+        let curDate = Date()
+        
+        //Create a date formatter
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "M/d/yyyy"
+        
+        
+        let days = self.getDaysSince190(inDate: curDate)
+        //print(days)
+        //print(lastRow[0][0])
+        
+        //Check the current date and days
+        //If the current days do not match then add record
+        if (lastRow[0][0] as! Int != days){
+            //print("Insert")
+            await self.appendExcelTableRow(excelFile: excelFile, tableName: tableName, elevatorNo: elevatorNo, days: days)
+        }else{
+            //If the current days match then update record
+            //print("Update")
+            await self.updateExcelTableRow(excelFile: excelFile, tableName: tableName, data: lastRow[0], elevatorNo: elevatorNo)
+       }
+
+    }
+    
+    /**
         Update the row and index in the excel table
         Asynchronous function
      **/
-    func updateExcelTableRow(excelFile: String, tableName: String, data: Data) async -> Bool {
-        return false
+    func updateExcelTableRow(excelFile: String, tableName: String, data: [Any], elevatorNo: Int) async {
+        do {
+            let graphURI = msalConfig.baseURL + excelFile + ":/workbook/worksheets(%27%7B" + String(describing: self.excelId) + "%7D%27)/tables/" + tableName + "/rows/$/ItemAt%28index=\(self.lastIndex)%29"
+            let url = URL(string: graphURI)
+            var request = URLRequest(url: url!)
+            
+            // Set the Authorization header for the request. We use Bearer tokens, so we specify Bearer + the token we got from the result
+            request.setValue("Bearer \(self.accessToken)", forHTTPHeaderField: "Authorization")
+           
+            var dataBody = [data[0],data[1],data[2],data[3],nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil]
+            
+            dataBody[elevatorNo]=dataBody[elevatorNo] as! Int + 1
+            
+            let postData = ["values": [dataBody]]
+            request.httpMethod = "PATCH"
+            request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")  // the request is JSON
+            
+            let jsonData = try? JSONSerialization.data(withJSONObject: postData)
+            request.httpBody = jsonData
+            
+            let (data, _) = try await URLSession.shared.data(for: request)
+            //print(data)
+            let result = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
+            
+            //print(result!["values"])
+            let json = result!["values"] as? [[Any]]
+            helper.el1Prob=String(format: "%.2f", json?[0][13] as! Double)
+            helper.el2Prob=String(format: "%.2f", json?[0][14] as! Double)
+            helper.el3Prob=String(format: "%.2f", json?[0][15] as! Double)
+            
+        }catch{
+            
+        }
+
+        
+        return
     }
     
     /**
         Append the row to the excel table
         Asynchronous function
      **/
-    func appendExcelTableRow(excelFile: String, tableName: String, data: Data) async -> Bool {
-        return false
+    func appendExcelTableRow(excelFile: String, tableName: String, elevatorNo: Int, days: Int) async  {
+        
+        do {
+            let graphURI = msalConfig.baseURL + excelFile + ":/workbook/worksheets(%27%7B" + String(describing: self.excelId) + "%7D%27)/tables/" + tableName + "/rows"
+            let url = URL(string: graphURI)
+            var request = URLRequest(url: url!)
+            
+            // Set the Authorization header for the request. We use Bearer tokens, so we specify Bearer + the token we got from the result
+            request.setValue("Bearer \(self.accessToken)", forHTTPHeaderField: "Authorization")
+           
+            var dataBody = [days,0,0,0,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil]
+            
+            dataBody[elevatorNo]=1
+            
+            let postData = ["values": [dataBody]]
+            request.httpMethod = "POST"
+            request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")  // the request is JSON
+            
+            let jsonData = try? JSONSerialization.data(withJSONObject: postData)
+            request.httpBody = jsonData
+            
+            let (data, _) = try await URLSession.shared.data(for: request)
+            print(data)
+            let result = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
+            
+            //print(result!["values"])
+            let json = result!["values"] as? [[Any]]
+            helper.el1Prob=String(format: "%.2f", json?[0][13] as! Double)
+            helper.el2Prob=String(format: "%.2f", json?[0][14] as! Double)
+            helper.el3Prob=String(format: "%.2f", json?[0][15] as! Double)
+
+        }catch{
+            
+        }
+        
+        
+        return
     }
     
     
-    func executeGetRequest(graphURI :String, accessToken :String) async throws {
+    /**func executeGetRequest(graphURI :String, accessToken :String) async throws {
         let url = URL(string: graphURI)
         var request = URLRequest(url: url!)
 
@@ -223,10 +347,10 @@ class Helpers {
             if let result1 = try? JSONSerialization.jsonObject(with: data!, options: []) as? [String: Any]
             {
                 
-                if let id = result1["value"] as? [String: Any]{
-                    print("result = \(id)")
+                if result1["value"] is [String: Any]{
+                    //print("result = \(id)")
                 }else{
-                    print("Original = \(result1)")
+                    //print("Original = \(result1)")
                     let json = result1.first?.value as? [[String: Any]]
                     
                     let id = json?[0]["id"]
@@ -264,7 +388,7 @@ class Helpers {
             return self.retVal as! String
         }
 
-    }
+    }**/
 
     
 }
