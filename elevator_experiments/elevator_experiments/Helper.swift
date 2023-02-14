@@ -121,7 +121,7 @@ class Helpers {
         
         let days = Calendar.current.dateComponents([.day], from: dateFormatter.date(from: startDateString)!, to: newDate).day!
         
-        print("Days=\(days)")
+        //print("Days=\(days)")
         
         return days
     }
@@ -230,28 +230,16 @@ class Helpers {
         //Create a date formatter
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "M/d/yyyy HH:mm:ss"
-        //dateFormatter.timeZone = TimeZone(abbreviation: "UTC")
-        //print(curDate.formatted())
         
         
         let days = self.getDaysSince190(inDate: curDate)
-        print(days)
-        print(lastRow[0][0])
-        var modifiedDate = Calendar.current.date(byAdding: .day, value: (days-1 as Int), to: dateFormatter.date(from: "01/01/1900 05:00:00")!)!
-        print(modifiedDate)
-        
-        modifiedDate = Calendar.current.date(byAdding: .day, value: Int(round((lastRow[0][0] as! Double - 1))), to: dateFormatter.date(from: "01/01/1900 05:00:00")!)!
-        print(modifiedDate)
-        //print(lastRow[0][0])
         
         //Check the current date and days
         //If the current days do not match then add record
         if ((Int(round((lastRow[0][0] as! Double) - 1))) != (days)){
-            print("Insert")
             await self.appendExcelTableRow(excelFile: excelFile, tableName: tableName, elevatorNo: elevatorNo, days: (days + 1) )
         }else{
             //If the current days match then update record
-            print("Update")
             await self.updateExcelTableRow(excelFile: excelFile, tableName: tableName, data: lastRow[0], elevatorNo: elevatorNo)
        }
 

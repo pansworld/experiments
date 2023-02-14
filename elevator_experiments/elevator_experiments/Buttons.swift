@@ -23,7 +23,7 @@ struct Buttons: View {
         VStack{
             HStack{
                 Button("Elevator 1") {
-                    helper.addData(input: "1")
+                    //helper.addData(input: "1")
                     Task{
                         await helper.processTableRow(excelFile: self.excelFile, tableName: self.tableName, elevatorNo: 1)
                         updateWithHelper()
@@ -34,7 +34,7 @@ struct Buttons: View {
             }
             HStack{
                 Button("Elevator 2") {
-                    helper.addData(input: "2")
+                    //helper.addData(input: "2")
                     Task{
                         await helper.processTableRow(excelFile: self.excelFile, tableName: self.tableName, elevatorNo: 2)
                         updateWithHelper()
@@ -44,7 +44,7 @@ struct Buttons: View {
             }
             HStack{
                 Button("Elevator 3") {
-                    helper.addData(input: "3")
+                    //helper.addData(input: "3")
                     Task{
                         await helper.processTableRow(excelFile: self.excelFile, tableName: self.tableName, elevatorNo: 3)
                         updateWithHelper()
