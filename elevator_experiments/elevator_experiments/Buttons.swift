@@ -54,7 +54,9 @@ struct Buttons: View {
             }
             Spacer()
             HStack{
-                MyCustomLogin(value: self.$elProb)
+                MyCustomLogin(value: self.$elProb).onOpenURL { url in
+                    helper.openUrl(url: url)
+                }
 
             }.padding()
 

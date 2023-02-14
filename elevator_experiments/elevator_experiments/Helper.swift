@@ -23,9 +23,9 @@ var currentAccount: MSALAccount?
 struct MSALConfig {
     var url = "https://login.microsoftonline.com/common"
     var clientId = "3de9c462-dfd5-4082-a1af-b0e62822b8ab"
-    var redirectURI = "msauth.pansworld.elevator-experiments://auth"
     var baseURL = "https://graph.microsoft.com/v1.0/me/drive/root:/"
     var authorityURL = "https://login.microsoftonline.com/common"
+    var redirectURI = "msauth.\(Bundle.main.bundleIdentifier!)://auth"
 }
 
 
@@ -87,10 +87,8 @@ class Helpers {
         } else {
             var csvText = "Date,Hour,Elevator\n"
 
-
                  let newLine = "\(month)/\(day)/\(year),\(hour),\(input)\n"
                  csvText.append(newLine)
-
 
              do {
                 try csvText.write(to: logFile, atomically: true, encoding: String.Encoding.utf8)
@@ -109,12 +107,22 @@ class Helpers {
      **/
     func getDaysSince190(inDate: Date) -> Int {
         let startDateString = "01/01/1900"
-        
+
         // Create Date Formatter
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "M/d/yyyy"
+        dateFormatter.timeZone = TimeZone(abbreviation: "UTC")
+        print(dateFormatter.date(from: startDateString)!)
+
+        let inDateFormatter = DateFormatter()
+        inDateFormatter.dateFormat = "M/d/yyyy HH:mm:ss"
+        let result = dateFormatter.string(from: inDate) + " 23:59:00"
+        var newDate = inDateFormatter.date(from: result)!
+        print(newDate)
         
-        let days = Calendar.current.dateComponents([.day], from: dateFormatter.date(from: startDateString)!, to: inDate).day!
+        let days = Calendar.current.dateComponents([.day], from: dateFormatter.date(from: startDateString)!, to: newDate).day!
+        
+        print("Days=\(days)")
         
         return days
     }
@@ -140,6 +148,7 @@ class Helpers {
         do {
             let authority = try MSALAuthority(url: URL(string: msalConfig.url)!)
             let pcaConfig = MSALPublicClientApplicationConfig(clientId: msalConfig.clientId, redirectUri: msalConfig.redirectURI, authority: authority)
+            print(msalConfig.redirectURI)
             let application = try MSALPublicClientApplication(configuration: pcaConfig)
             let webViewParameters = MSALWebviewParameters(authPresentationViewController: controller)
             let interactiveParameters = MSALInteractiveTokenParameters(scopes: ["user.read","Files.ReadWrite.All"], webviewParameters: webViewParameters)
@@ -153,7 +162,6 @@ class Helpers {
                 }
                 
                 self.accessToken = result.accessToken
- 
             }
         }catch{
             return
@@ -173,7 +181,6 @@ class Helpers {
             // Set the Authorization header for the request. We use Bearer tokens, so we specify Bearer + the token we got from the result
             request.setValue("Bearer \(self.accessToken)", forHTTPHeaderField: "Authorization")
 
-
             //Check if we have the excel id if not get it
             if (self.excelId == ""){
                 let (data, _) = try await URLSession.shared.data(for: request)
@@ -185,7 +192,6 @@ class Helpers {
                 self.excelId = String(self.excelId.dropFirst(10))
                 
             }
-            
 
             if (self.excelId != ""){
                 graphURI = msalConfig.baseURL + excelFile + ":/workbook/worksheets(%27%7B" + String(describing: self.excelId) + "%7D%27)/tables/" + tableName + "/rows"
@@ -200,7 +206,6 @@ class Helpers {
                 self.retVal = String(describing: json?[0]["id"])
                 self.tableRow = ((json?[json!.count - 1]["values"])  as! [[Any]])
                 self.lastIndex = json!.count - 1
-                
             }
 
         }catch{
@@ -221,24 +226,33 @@ class Helpers {
         
         let lastRow = self.tableRow
         let curDate = Date()
+        print("Current Date= \(curDate)")
         
         //Create a date formatter
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "M/d/yyyy"
+        dateFormatter.dateFormat = "M/d/yyyy HH:mm:ss"
+        //dateFormatter.timeZone = TimeZone(abbreviation: "UTC")
+        //print(curDate.formatted())
         
         
         let days = self.getDaysSince190(inDate: curDate)
-        //print(days)
+        print(days)
+        print(lastRow[0][0])
+        var modifiedDate = Calendar.current.date(byAdding: .day, value: (days-1 as Int), to: dateFormatter.date(from: "01/01/1900 05:00:00")!)!
+        print(modifiedDate)
+        
+        modifiedDate = Calendar.current.date(byAdding: .day, value: Int(round((lastRow[0][0] as! Double - 1))), to: dateFormatter.date(from: "01/01/1900 05:00:00")!)!
+        print(modifiedDate)
         //print(lastRow[0][0])
         
         //Check the current date and days
         //If the current days do not match then add record
-        if (lastRow[0][0] as! Int != days){
-            //print("Insert")
-            await self.appendExcelTableRow(excelFile: excelFile, tableName: tableName, elevatorNo: elevatorNo, days: days)
+        if ((Int(round((lastRow[0][0] as! Double) - 1))) != (days)){
+            print("Insert")
+            await self.appendExcelTableRow(excelFile: excelFile, tableName: tableName, elevatorNo: elevatorNo, days: (days + 1) )
         }else{
             //If the current days match then update record
-            //print("Update")
+            print("Update")
             await self.updateExcelTableRow(excelFile: excelFile, tableName: tableName, data: lastRow[0], elevatorNo: elevatorNo)
        }
 
@@ -329,67 +343,11 @@ class Helpers {
         return
     }
     
-    
-    /**func executeGetRequest(graphURI :String, accessToken :String) async throws {
-        let url = URL(string: graphURI)
-        var request = URLRequest(url: url!)
-
-        // Set the Authorization header for the request. We use Bearer tokens, so we specify Bearer + the token we got from the result
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            
-            if let error = error {
-                print("Couldn't get graph result: \(error)")
-                return
-            }
-            
-            if let result1 = try? JSONSerialization.jsonObject(with: data!, options: []) as? [String: Any]
-            {
-                
-                if result1["value"] is [String: Any]{
-                    //print("result = \(id)")
-                }else{
-                    //print("Original = \(result1)")
-                    let json = result1.first?.value as? [[String: Any]]
-                    
-                    let id = json?[0]["id"]
-                    if id == nil{
-                        print("There is no value")
-                        self.retVal = "No Id Found"
-                    }else{
-                        print("There is a value")
-                        self.retVal = id as! String
-                    }
-                    return
-
-                }
-            }  else {
-                print("Couldn't deserialize result JSON")
-                return
-            }
-            
+    /**
+        Opens the weburl returned by the borker
+     */
+    func openUrl(url: URL) {
+            MSALPublicClientApplication.handleMSALResponse(url, sourceApplication: nil)
         }
-        task.resume()
-    }
-
-
-    func getWorkBookId(accessToken :String) async -> String {
-
-        //Get the list of drives
-        //
-        let graphURI = "https://graph.microsoft.com/v1.0/me/drive/root/search(q='elevator_experiments.xlsx')?select=name,id,webUrl"
-        
-        do{
-            try await self.executeGetRequest(graphURI: graphURI , accessToken: accessToken)
-            print ("Return Value \(self.retVal)")
-            return self.retVal as! String
-        }catch {
-            return self.retVal as! String
-        }
-
-    }**/
-
-    
 }
 
