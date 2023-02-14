@@ -117,8 +117,7 @@ class Helpers {
         let inDateFormatter = DateFormatter()
         inDateFormatter.dateFormat = "M/d/yyyy HH:mm:ss"
         let result = dateFormatter.string(from: inDate) + " 23:59:00"
-        var newDate = inDateFormatter.date(from: result)!
-        print(newDate)
+        let newDate = inDateFormatter.date(from: result)!
         
         let days = Calendar.current.dateComponents([.day], from: dateFormatter.date(from: startDateString)!, to: newDate).day!
         
