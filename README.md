@@ -1,4 +1,4 @@
-# Experimnts in Machine Learning
+# Experiments in Machine Learning
 
 ## Elevator Experiments
 ### Premise
