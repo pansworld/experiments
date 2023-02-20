@@ -12,10 +12,12 @@ I have 3 elevators in my building. The objective is to figure out how can a ML p
 * For each trip note down which elevator comes (up or down does not matter)
 * Sum up the number of times an elevator comes on a particular day
 
-### Prediction
+### Prediction Process
+
+#### Alogrithm 1
 * From total running counts calculate the overall probability for each elevator
 * The probability based on the day of the week
-* Predict using an RL and this Rewards Function
+* Predict using Reinformcement Learning using this Rewards Function
 
 
 | Rewards        | Human Prediction vs Machine Prediction | Human Prediction vs Actual | Machine Prediction vs Actual |
@@ -23,4 +25,5 @@ I have 3 elevators in my building. The objective is to figure out how can a ML p
 | Matches        | 1                                      | 0.5                        | 0.5                          |
 | Does not Match | -1                                     | -0.5                       | -0.5                         |
 
-The emphasis is on rewarding more for agreeing with Human Prediction than being right.
+* Find the policy that matches up with Human accuracy
+
