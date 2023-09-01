@@ -43,6 +43,7 @@ class Helpers {
     var el2Prob: String
     var el3Prob: String
     var lastIndex: Int
+    var weekdayData: [WeekdayData]
     
     init(){
         //Constructor
@@ -56,6 +57,7 @@ class Helpers {
         self.el2Prob = ""
         self.el3Prob = ""
         self.lastIndex = 0
+        self.weekdayData = []
 
     }
     
@@ -168,6 +170,53 @@ class Helpers {
     }
     
     /**
+        Populate the weekday data
+        Asynchronous function
+    **/
+    func populateWeekdayData(tableData: [[String: Any]]){
+        //Empty out the existing Week Day Data
+        self.weekdayData = []
+        var dataStruct = [1: [0.0,0.0,0.0],
+                    2:[0.0,0.0,0.0],
+                    3:[0.0,0.0,0.0],
+                    4:[0.0,0.0,0.0],
+                    5:[0.0,0.0,0.0],
+                    6:[0.0,0.0,0.0],
+                    7:[0.0,0.0,0.0]]
+        var count = [1: 0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0]
+        var counter = 0
+        //Ignore the header row
+        
+        for row in tableData{
+            if (counter > 0){
+                let values = row["values"] as! [[Any]]
+                let index = values[0][7] as! Int
+                let update = [values[0][13] as! Double, values[0][14] as! Double, values[0][15] as! Double]
+                
+                //Add the updates together
+                dataStruct[index]=zip(dataStruct[index]!,update).map(+)
+                count[(values[0][7]) as! Int] = count[(values[0][7]) as! Int]! + 1
+            }
+            counter = counter + 1
+        }
+        
+        //Now compute the average
+        //for (day, _) in dataStruct{
+        (1...7).forEach{ day in
+            dataStruct[day]=dataStruct[day]?.indices.map {(dataStruct[day]?[$0])! / Double(count[day]!)}
+            print(day)
+            self.weekdayData.append(WeekdayData(name: "Elevator 1", weekday: day, prob: Float(dataStruct[day]![0])))
+            self.weekdayData.append(WeekdayData(name: "Elevator 2", weekday: day, prob: Float(dataStruct[day]![1])))
+            self.weekdayData.append(WeekdayData(name: "Elevator 3", weekday: day, prob: Float(dataStruct[day]![2])))
+        
+        }
+        
+        print(dataStruct)
+        print(count)
+        print(self.weekdayData)
+    }
+    
+    /**
         Get the last row in the excel table
         Asynchronous function
     **/
@@ -178,6 +227,7 @@ class Helpers {
             var request = URLRequest(url: url!)
 
             // Set the Authorization header for the request. We use Bearer tokens, so we specify Bearer + the token we got from the result
+            print(self.accessToken)
             request.setValue("Bearer \(self.accessToken)", forHTTPHeaderField: "Authorization")
 
             //Check if we have the excel id if not get it
@@ -203,6 +253,10 @@ class Helpers {
                 
                 let json = result!["value"] as? [[String: Any]]
                 self.retVal = String(describing: json?[0]["id"])
+                //Populate the weekday data as well
+                populateWeekdayData(tableData: json!)
+                
+                
                 self.tableRow = ((json?[json!.count - 1]["values"])  as! [[Any]])
                 self.lastIndex = json!.count - 1
             }

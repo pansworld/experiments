@@ -7,13 +7,10 @@
 
 import SwiftUI
 
+
 struct ContentView: View {
     var body: some View {
-
-        VStack {
-            Buttons().padding()
-        }
-        .padding()
+        Buttons()
     }
 }
 
