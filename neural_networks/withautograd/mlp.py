@@ -57,3 +57,34 @@ class MLP:
 
   def __repr__(self):
     return f"Model type: MLP [{', '.join(str(layer) for layer in self.layers)}]"
+
+
+if __name__ == "__main__":
+  xs = [[0.1,0.2,0.3],
+     [0.5,0.3,-0.1],
+     [-0.2,-0.3,0.5],
+     [0.01,0.1,0.6,0.1]
+    ]
+
+  y_act = [1.0, -1.0, -1.0,1.0]
+  n = MLP(3,[4,4,1], ['relu','relu','tanh'])
+  print(n)
+  
+  for step in range(200):
+    #Run the forward pass
+    y_pred = [n(x) for x in xs]
+  
+    #Calculate the loss
+    loss = sum([(y_pre - y_ac)**2 for y_pre, y_ac in zip(y_pred, y_act)])
+  
+    #Backward pass
+    loss.backward()
+  
+    #Update the parameters
+    for p in n.parameters():
+      #print(p.grad)
+      p.data += -0.01*p.grad
+      p.grad=0.0 #be sure to zero out the gradient after update
+  
+    print(step, loss.data)
+    print(y_pred)
