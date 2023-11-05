@@ -1,6 +1,7 @@
 #Adapted from micrograd by Andrej Karpathy
 #https://github.com/karpathy/micrograd
 import random
+from autograd import Value
 
 class Neuron:
   def __init__(self, nin, activation='tanh'):
