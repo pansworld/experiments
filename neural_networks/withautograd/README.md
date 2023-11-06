@@ -4,4 +4,14 @@ Study how pytorch processes gradients in Neural Networks. Andrej elegantly demmy
 Refer to his repository here https://github.com/karpathy/micrograd.
 
 ## Modifications
-Planning several modifications to this base. Stay tuned.
+Modifications to this base.
+### Added draw_dot to the Value class
+Allows you to visualize the computation graph for a variable. It was part of one of Andrej's tutorials. Added it to be base class.
+
+Example: 
+b = Value(2.0, name="b")
+c = Value(3.0, name="c")
+a = b + c
+a.draw_dot()
+
+![alt text](https://www.github.com/pansworld/experiments/neural_networks/withautograd/assets/Micrograd_example_1.png)

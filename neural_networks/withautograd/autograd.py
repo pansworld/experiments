@@ -2,6 +2,8 @@
 #Based on micrograd by Andrej Karpath
 #https://github.com/karpathy/micrograd
 import math
+#Draw the computation directed graph
+from graphviz import Digraph
 
 class Value:
   def __init__(self, data, children=(), _op='', name=''):
@@ -64,7 +66,6 @@ class Value:
 
       return out
 
-
   def tanh(self):
     n = self.data
     _exp = math.exp(2*n)
@@ -119,3 +120,31 @@ class Value:
     #Run the backwards pass in the topological graph
     for node in reversed(topo):
       node._backward()
+
+  def _trace(self):
+    edges, nodes = set(), set()
+    def build(v):
+      if v not in nodes:
+        nodes.add(v)
+        for child in v._prev:
+          edges.add((child, v))
+          build(child)
+    build(self)
+    return nodes, edges
+
+  def draw_dot(self):
+    dot = Digraph(format='svg', graph_attr={'rankdir': 'LR'}) #Left to right
+    nodes, edges = self._trace(self)
+    for n in nodes:
+      uid = str(id(n))
+      dot.node(name = uid, label= "{%s | data %.4f | grad %.4f}" % (n.name, n.data, n.grad, ), shape="record")
+      if n._op:
+        #Define the op node
+        dot.node(name = uid + n._op, label=n._op)
+        #Connect the edge to the previous node
+        dot.edge(uid + n._op, uid)
+
+    for n1, n2 in edges:
+      dot.edge(str(id(n1)), str(id(n2)) + n2._op)
+
+    return dot
