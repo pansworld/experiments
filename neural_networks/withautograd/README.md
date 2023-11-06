@@ -14,4 +14,4 @@ c = Value(3.0, name="c")
 a = b + c
 a.draw_dot()
 
-![alt text](https://www.github.com/pansworld/experiments/neural_networks/withautograd/assets/Micrograd_example_1.png)
+![alt text](https://github.com/7e2c111a-38da-432e-92fa-3d86c0371a0b)
