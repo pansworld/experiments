@@ -28,3 +28,9 @@ I have 3 elevators in my building. The objective is to figure out how can a ML p
 * Find the policy that matches up with Human accuracy
 
 #### Binomial Mixture Model
+
+
+
+
+## Neural Networks
+There are my attempts at writing Neural Network from scratch.
